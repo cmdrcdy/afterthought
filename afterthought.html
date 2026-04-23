@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Afterthought</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #EEE8DA; font-family: 'Jost', sans-serif; font-weight: 300; color: #1A1208; min-height: 100vh; }
+
+    .header { border-bottom: 0.5px solid rgba(26,18,8,0.16); padding: 24px 64px; display: flex; align-items: baseline; gap: 22px; }
+    .wordmark { font-family: 'Cormorant', serif; font-style: italic; font-weight: 300; font-size: 22px; color: #1A1208; letter-spacing: 0.07em; }
+    .tagline { font-family: 'Jost', sans-serif; font-weight: 300; font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: #8A7258; }
+
+    .main { padding: 48px 64px 80px; }
+
+    .top-row { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; margin-bottom: 40px; }
+
+    .lede { font-family: 'Cormorant', serif; font-style: italic; font-weight: 300; font-size: 16px; color: #6B5840; line-height: 1.75; margin-bottom: 20px; }
+
+    .input-group { display: flex; border: 0.5px solid rgba(26,18,8,0.26); border-radius: 2px; overflow: hidden; background: #F0EAD8; }
+    input { flex: 1; padding: 13px 16px; border: none; background: transparent; font-family: 'Cormorant', serif; font-style: italic; font-weight: 300; font-size: 15px; color: #1A1208; outline: none; }
+    input::placeholder { color: #A89070; }
+
+    .btn-row { display: flex; gap: 2px; flex-shrink: 0; }
+
+    button { padding: 13px 20px; background: #1A1208; color: #EEE8DA; border: none; font-family: 'Jost', sans-serif; font-weight: 300; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer; transition: background 0.18s; }
+    button:hover { background: #2C2418; }
+    button.secondary { background: #5C3820; }
+    button.secondary:hover { background: #4A2C14; }
+
+    .status { display: flex; align-items: center; gap: 10px; font-family: 'Jost', sans-serif; font-weight: 300; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #9A8268; min-height: 20px; margin-top: 12px; }
+
+    .sun-wrap { display: none; width: 18px; height: 18px; flex-shrink: 0; }
+    .sun-wrap.active { display: block; animation: spin 5s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; align-items: start; }
+
+    /* Synthesis */
+    .s-synthesis { background: #EDE6D4; border: 0.5px solid rgba(44,74,46,0.2); border-radius: 3px; padding: 30px 32px; }
+    .synth-label { font-family: 'Jost', sans-serif; font-weight: 300; font-size: 8px; letter-spacing: 0.26em; text-transform: uppercase; color: #8A7258; margin-bottom: 20px; display: block; }
+
+    .verdict-block { background: #F2EBD8; border: 0.5px solid rgba(26,18,8,0.1); border-top: 1.5px solid #2C4A2E; border-radius: 2px; padding: 20px 22px; margin-bottom: 2px; }
+    .verdict-label { font-family: 'Jost', sans-serif; font-weight: 300; font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; color: #8A7258; margin-bottom: 7px; display: block; }
+    .verdict-score { font-family: 'Cormorant', serif; font-style: italic; font-weight: 300; font-size: 54px; line-height: 1; margin-bottom: 10px; }
+    .verdict-text { font-family: 'Cormorant', serif; font-style: italic; font-weight: 300; font-size: 14px; line-height: 1.8; color: #4A3820; }
+
+    .score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 2px; }
+    .score-card { background: #F2EBD8; border: 0.5px solid rgba(26,18,8,0.1); border-radius: 2px; padding: 16px 18px; cursor: pointer; transition: background 0.15s; }
+    .score-card:hover { background: #F8F2E4; }
+    .score-card-label { font-family: 'Jost', sans-serif; font-weight: 300; font-size: 7.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #8A7258; margin-bottom: 6px; display: block; }
+    .score-card-number { font-family: 'Cormorant', serif; font-style: italic; font-weight: 300; font-size: 30px; line-height: 1; margin-bottom: 7px; }
+    .score-card-summary { font-family: 'Cormorant', serif; font-style: italic; font-weight: 300; font-size: 11.5px; color: #6A5438; line-height: 1.6; }
+    .score-card-cta { font-family: 'Jost', sans-serif; font-weight: 300; font-size: 7px; letter-spacing: 0.16em; text-transform: uppercase; color: #2C4A2E; margin-top: 9px; display: block; opacity: 0.7; }
+
+    .score-card.food-card   { border-top: 1.5px solid #8B3A2A; }
+    .score-card.energy-card { border-top: 1.5px solid #2C4A2E; }
+    .score-card.water-card  { border-top: 1.5px solid #2B3A5C; }
+    .score-card.climate-card { border-top: 1.5px solid #6B4820; }
+
+    .terrain-note { background: #F2EBD8; border: 0.5px solid rgba(26,18,8,0.1); border-left: 1.5px solid #5C3820; border-radius: 0 2px 2px 0; padding: 13px 16px; margin-bottom: 2px; font-family: 'Cormorant', serif; font-style: italic; font-weight: 300; font-size: 13px; color: #4A3820; line-height: 1.7; }
+
+    .regulatory-note { background: #F5EDE0; border: 0.5px solid rgba(107,40,24,0.15); border-left: 1.5px solid #6B2818; border-radius: 0 2px 2px 0; padding: 13px 16px; margin-bottom: 2px; font-family: 'Cormorant', serif; font-style: italic; font-weight: 300; font-size: 13px; color: #4A2018; line-height: 1.7; }
+    .regulatory-label { font-family: 'Jost', sans-serif; font-weight: 300; font-size: 7.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #8B4A3A; margin-bottom: 6px; display: block; }
+
+    .sr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+    .sr-block { background: #F2EBD8; border: 0.5px solid rgba(26,18,8,0.1); border-radius: 2px; padding: 16px 18px; }
+    .sr-label { font-family: 'Jost', sans-serif; font-weight: 300; font-size: 7.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #8A7258; margin-bottom: 11px; display: block; }
+    .sr-item { font-family: 'Cormorant', serif; font-style: italic; font-weight: 300; font-size: 12.5px; color: #3A2818; line-height: 1.6; padding: 5px 0; border-bottom: 0.5px solid rgba(26,18,8,0.08); display: flex; gap: 8px; }
+    .sr-item:last-child { border-bottom: none; }
+    .sr-marker { font-family: 'Jost', sans-serif; font-size: 10px; flex-shrink: 0; padding-top: 1px; }
+    .sr-marker.plus { color: #2C4A2E; }
+    .sr-marker.minus { color: #8B3A2A; }
+
+    .score-high { color: #3A7038; }
+    .score-mid  { color: #9A7820; }
+    .score-low  { color: #8B3A2A; }
+
+    /* Map */
+    .map-block { background: #F2EBD8; border: 0.5px solid rgba(26,18,8,0.1); border-top: 1.5px solid #2B3A5C; border-radius: 2px; margin-bottom: 2px; overflow: hidden; }
+    .map-label { font-family: 'Jost', sans-serif; font-weight: 300; font-size: 7.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #8A7258; padding: 10px 14px 8px; display: block; }
+    #map { height: 200px; width: 100%; }
+
+    /* Data sections */
+    .data-sections { display: flex; flex-direction: column; gap: 2px; }
+    .data-section { background: #F4EEE0; border: 0.5px solid rgba(26,18,8,0.12); border-radius: 2px; overflow: hidden; }
+    .data-section-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; cursor: pointer; user-select: none; transition: background 0.15s; }
+    .data-section-header:hover { background: rgba(26,18,8,0.03); }
+    .data-section-title { font-family: 'Jost', sans-serif; font-weight: 300; font-size: 8px; letter-spacing: 0.22em; text-transform: uppercase; color: #5A4830; }
+    .data-section-toggle { font-family: 'Jost', sans-serif; font-weight: 300; font-size: 7.5px; letter-spacing: 0.14em; text-transform: uppercase; color: #9A8268; }
+    .data-section-body { display: none; padding: 2px 20px 16px; }
+    .data-section-body.open { display: block; }
+
+    .data-row { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0; gap: 20px; }
+    .data-row:last-child { border-bottom: none !important; }
+    .data-label { font-family: 'Jost', sans-serif; font-weight: 300; font-size: 10.5px; letter-spacing: 0.03em; flex-shrink: 0; color: #7A6248; }
+    .data-value { font-family: 'Cormorant', serif; font-weight: 300; font-size: 15px; text-align: right; line-height: 1.5; max-width: 62%; color: #1A1208; }
+    .data-value.empty { opacity: 0.22; font-style: italic; font-size: 13px; }
+
+    .ds-property  { border-top: 1.5px solid #5C3820; }
+    .ds-property  .data-row { border-bottom: 0.5px solid rgba(92,56,32,0.12); }
+    .ds-climate   { border-top: 1.5px solid #2C4A2E; }
+    .ds-climate   .data-row { border-bottom: 0.5px solid rgba(44,74,46,0.14); }
+    .ds-terrain   { border-top: 1.5px solid #4A3020; }
+    .ds-terrain   .data-row { border-bottom: 0.5px solid rgba(74,48,32,0.12); }
+    .ds-soil      { border-top: 1.5px solid #8B3A2A; }
+    .ds-soil      .data-row { border-bottom: 0.5px solid rgba(139,58,42,0.12); }
+    .ds-water     { border-top: 1.5px solid #2B3A5C; }
+    .ds-water     .data-row { border-bottom: 0.5px solid rgba(43,58,92,0.14); }
+    .ds-threats   { border-top: 1.5px solid #6B2818; }
+    .ds-threats   .data-row { border-bottom: 0.5px solid rgba(107,40,24,0.12); }
+
+    .disclaimer-row { margin-top: 32px; padding-top: 24px; border-top: 0.5px solid rgba(26,18,8,0.12); display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+    .disclaimer { font-family: 'Jost', sans-serif; font-weight: 300; font-size: 9.5px; color: #9A8268; line-height: 1.9; letter-spacing: 0.03em; }
+
+    @media (max-width: 900px) {
+      .main { padding: 32px 28px 60px; }
+      .top-row, .results-grid { grid-template-columns: 1fr; }
+      .header { padding: 22px 28px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <span class="wordmark">Afterthought</span>
+    <span class="tagline">Off-grid viability analysis</span>
+  </div>
+
+  <div class="main">
+    <div class="top-row">
+      <div>
+        <p class="lede">Enter any US property address to receive a site-specific analysis of its off-grid self-sufficiency potential.</p>
+      </div>
+      <div>
+        <div class="input-group">
+          <input type="text" id="address" placeholder="311 Water Street, Neillsville, WI 54456"/>
+          <div class="btn-row">
+            <button onclick="analyze()">Analyze</button>
+            <button class="secondary" onclick="exportPDF()" id="pdf-btn" style="display:none;">Export PDF</button>
+          </div>
+        </div>
+        <div class="status" id="status">
+          <svg class="sun-wrap" id="sun" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="2.8" stroke="#C4A030" stroke-width="1.1"/>
+            <line x1="10" y1="1.5" x2="10" y2="4" stroke="#C4A030" stroke-width="1"/>
+            <line x1="10" y1="16" x2="10" y2="18.5" stroke="#C4A030" stroke-width="1"/>
+            <line x1="1.5" y1="10" x2="4" y2="10" stroke="#C4A030" stroke-width="1"/>
+            <line x1="16" y1="10" x2="18.5" y2="10" stroke="#C4A030" stroke-width="1"/>
+            <line x1="3.4" y1="3.4" x2="5.2" y2="5.2" stroke="#C4A030" stroke-width="1"/>
+            <line x1="14.8" y1="14.8" x2="16.6" y2="16.6" stroke="#C4A030" stroke-width="1"/>
+            <line x1="3.4" y1="16.6" x2="5.2" y2="14.8" stroke="#C4A030" stroke-width="1"/>
+            <line x1="14.8" y1="5.2" x2="16.6" y2="3.4" stroke="#C4A030" stroke-width="1"/>
+          </svg>
+          <span id="status-text"></span>
+        </div>
+      </div>
+    </div>
+    <div id="result"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    var REGRID_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJyZWdyaWQuY29tIiwiaWF0IjoxNzc0NzY4MTU4LCJleHAiOjE3NzczNjAxNTgsInUiOjczNzQ5OSwiZyI6MjMxNTMsImNhcCI6InBhOnRzOnBzOmJmOm1hOnR5OmVvOnpvOnNiIn0.noU6EGGpiEnehRDAP49roYZLbee33f4IS1QbTEMFMFA";
+    var ANTHROPIC_API_KEY = var ANTHROPIC_API_KEY = "PUT-YOUR-ANTHROPIC-KEY-HERE";
+    var leafletMap = null;
+    var lastResult = null;
+
+    function setStatus(msg) {
+      document.getElementById("status-text").textContent = msg;
+      document.getElementById("sun").classList.toggle("active", !!msg);
+    }
+
+    function dv(v, suffix) {
+      if (v === null || v === undefined || v === "Unavailable" || v === "") return '<span class="data-value empty">—</span>';
+      return '<span class="data-value">' + v + (suffix || "") + '</span>';
+    }
+
+    function dr(label, value, suffix) {
+      return '<div class="data-row"><span class="data-label">' + label + '</span>' + dv(value, suffix) + '</div>';
+    }
+
+    function scoreColor(s) {
+      if (!s && s !== 0) return "";
+      var n = parseInt(s);
+      if (n >= 70) return "score-high";
+      if (n >= 45) return "score-mid";
+      return "score-low";
+    }
+
+    function toggleSection(id) {
+      var body = document.getElementById(id);
+      var tog = document.getElementById(id + "-tog");
+      if (!body) return;
+      if (body.classList.contains("open")) {
+        body.classList.remove("open");
+        tog.textContent = "View data";
+      } else {
+        body.classList.add("open");
+        tog.textContent = "Close";
+      }
+    }
+
+    function openSection(id) {
+      var body = document.getElementById(id);
+      var tog = document.getElementById(id + "-tog");
+      if (!body) return;
+      body.classList.add("open");
+      if (tog) tog.textContent = "Close";
+      setTimeout(function() {
+        var h = body.previousElementSibling;
+        if (h) h.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80);
+    }
+
+    function makeSection(cls, id, title, rows) {
+      return '<div class="data-section ' + cls + '">' +
+        '<div class="data-section-header" onclick="toggleSection(\'' + id + '\')">' +
+          '<span class="data-section-title">' + title + '</span>' +
+          '<span class="data-section-toggle" id="' + id + '-tog">View data</span>' +
+        '</div>' +
+        '<div class="data-section-body" id="' + id + '">' + rows + '</div>' +
+      '</div>';
+    }
+
+    function renderSynthesis(s) {
+      if (!s) return "";
+      var overall = s.overall_score !== undefined ? s.overall_score : "—";
+      var html = '<div class="s-synthesis">';
+      html += '<span class="synth-label">Viability Assessment &middot; Afterthought</span>';
+
+      html += '<div class="verdict-block">';
+      html += '<span class="verdict-label">Overall viability</span>';
+      html += '<div class="verdict-score ' + scoreColor(overall) + '">' + overall;
+      html += '<span style="font-size:17px;opacity:0.28;font-family:\'Jost\',sans-serif;font-weight:300;letter-spacing:0;"> /100</span></div>';
+      if (s.overall_verdict) html += '<p class="verdict-text">' + s.overall_verdict + '</p>';
+      html += '</div>';
+
+      html += '<div class="score-grid">';
+      [
+        { key: "food",    label: "Food production",   section: "sec-soil",    cls: "food-card" },
+        { key: "energy",  label: "Energy",             section: "sec-climate", cls: "energy-card" },
+        { key: "water",   label: "Water independence", section: "sec-water",   cls: "water-card" },
+        { key: "climate", label: "Climate resilience", section: "sec-threats", cls: "climate-card" }
+      ].forEach(function(cat) {
+        var score = s[cat.key + "_score"];
+        var summary = s[cat.key + "_summary"];
+        html += '<div class="score-card ' + cat.cls + '" onclick="openSection(\'' + cat.section + '\')">';
+        html += '<span class="score-card-label">' + cat.label + '</span>';
+        html += '<div class="score-card-number ' + scoreColor(score) + '">' + (score !== undefined ? score : "—") + '</div>';
+        if (summary) html += '<p class="score-card-summary">' + summary + '</p>';
+        html += '<span class="score-card-cta">View source data &darr;</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+
+      if (s.terrain_correction) html += '<div class="terrain-note">' + s.terrain_correction + '</div>';
+
+      if (s.regulatory_flags && s.regulatory_flags.length > 0) {
+        html += '<div class="regulatory-note">';
+        html += '<span class="regulatory-label">Regulatory flags</span>';
+        s.regulatory_flags.forEach(function(flag) {
+          html += '<div style="margin-bottom:4px;">&mdash; ' + flag + '</div>';
+        });
+        html += '</div>';
+      }
+
+      html += '<div class="sr-grid">';
+      if (s.top_strengths && s.top_strengths.length > 0) {
+        html += '<div class="sr-block"><span class="sr-label">Strengths</span>';
+        s.top_strengths.forEach(function(item) {
+          html += '<div class="sr-item"><span class="sr-marker plus">+</span><span>' + item + '</span></div>';
+        });
+        html += '</div>';
+      }
+      if (s.top_risks && s.top_risks.length > 0) {
+        html += '<div class="sr-block"><span class="sr-label">Risks</span>';
+        s.top_risks.forEach(function(item) {
+          html += '<div class="sr-item"><span class="sr-marker minus">&ndash;</span><span>' + item + '</span></div>';
+        });
+        html += '</div>';
+      }
+      html += '</div></div>';
+      return html;
+    }
+
+    function initMap(lat, lon) {
+      var mapHtml = '<div class="map-block">' +
+        '<span class="map-label">Location &middot; OpenStreetMap</span>' +
+        '<div id="map"></div>' +
+        '</div>';
+      return mapHtml;
+    }
+
+    function setupLeaflet(lat, lon) {
+      setTimeout(function() {
+        if (leafletMap) { leafletMap.remove(); leafletMap = null; }
+        var mapEl = document.getElementById("map");
+        if (!mapEl) return;
+        leafletMap = L.map("map", { zoomControl: true }).setView([lat, lon], 13);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; OpenStreetMap contributors',
+          maxZoom: 19
+        }).addTo(leafletMap);
+        var icon = L.divIcon({
+          html: '<div style="width:12px;height:12px;background:#2C4A2E;border:2px solid #EEE8DA;border-radius:50%;"></div>',
+          iconSize: [12,12], iconAnchor: [6,6], className: ""
+        });
+        L.marker([lat, lon], { icon: icon }).addTo(leafletMap);
+      }, 200);
+    }
+
+    async function analyze() {
+      var address = document.getElementById("address").value.trim();
+      if (!address) return;
+      document.getElementById("result").innerHTML = "";
+      document.getElementById("pdf-btn").style.display = "none";
+      lastResult = null;
+
+      setStatus("Locating property —");
+      var coords = null;
+      try { coords = await geocode(address); } catch(e) { setStatus("Location failed: " + e.message); return; }
+      if (!coords) { setStatus("Address not found. Please check and try again."); return; }
+
+      setStatus("Retrieving climate data —");
+      var nasa = null;
+      try { nasa = await getNASAData(coords.lat, coords.lon); } catch(e) { setStatus("Climate data failed: " + e.message); return; }
+
+      setStatus("Analyzing terrain —");
+      var terrain = null;
+      try { terrain = await getElevationData(coords.lat, coords.lon); } catch(e) { setStatus("Terrain failed: " + e.message); return; }
+
+      setStatus("Sampling soil —");
+      var soil = null;
+      try { soil = await getSoilData(coords.lat, coords.lon); } catch(e) {}
+
+      setStatus("Analyzing water —");
+      var water = { groundwater: null, surfaceWater: null, nearestStream: null };
+      try { water = await getWaterData(coords.lat, coords.lon); } catch(e) {}
+
+      setStatus("Assessing climate threats —");
+      var threats = { flood: null, drought: null, wildfire: null };
+      try { threats = await getClimateThreats(coords.lat, coords.lon); } catch(e) {}
+
+      setStatus("Synthesizing —");
+      var synthesis = null;
+      try { synthesis = await getSynthesis(coords, nasa, terrain, soil, water, threats); } catch(e) { setStatus("Synthesis failed: " + e.message); }
+
+      setStatus("");
+
+      var solar = nasa.ALLSKY_SFC_SW_DWN.ANN;
+      var wind = nasa.WS10M.ANN;
+      var rainfall = nasa.PRECTOTCORR.ANN;
+      var temp = nasa.T2M.ANN;
+      var frostDays = nasa.FROST_DAYS.ANN;
+      var soilMoisture = nasa.GWETROOT.ANN;
+
+      var synHtml = renderSynthesis(synthesis);
+      var mapHtml = initMap(coords.lat, coords.lon);
+
+      var sectHtml = '<div class="data-sections">';
+      sectHtml += makeSection("ds-property", "sec-property", "Property",
+        dr("Location", coords.name) +
+        dr("Source", coords.method) +
+        (coords.acres ? dr("Land area", coords.acres, " acres") : "") +
+        (coords.zoning ? dr("Zoning", coords.zoning) : "") +
+        (coords.parcel_id ? dr("Parcel ID", coords.parcel_id) : "")
+      );
+      sectHtml += makeSection("ds-climate", "sec-climate", "Climate &middot; NASA POWER",
+        dr("Solar irradiance", solar, " kWh/m2/day") +
+        dr("Wind speed", wind, " m/s") +
+        dr("Annual rainfall", rainfall, " mm/day") +
+        dr("Mean temperature", temp, "°C") +
+        dr("Frost days", frostDays, " days/year") +
+        dr("Root zone moisture", soilMoisture)
+      );
+      sectHtml += makeSection("ds-terrain", "sec-terrain", "Terrain &middot; USGS",
+        dr("Elevation", terrain.centerElevation !== "Unavailable" ? terrain.centerElevation : null, " m") +
+        dr("Slope", terrain.slopeDegrees !== "Unavailable" ? terrain.slopeDegrees + "° (" + terrain.slopePercent + "%)" : null) +
+        dr("Aspect", terrain.aspect !== "Unavailable" ? terrain.aspect + " (" + terrain.aspectDegrees + "°)" : null) +
+        dr("Elevation range", terrain.elevationRange !== "Unavailable" ? terrain.elevationRange : null, " m") +
+        dr("Frost pocket risk", terrain.frostPocketRisk !== "Unavailable" ? terrain.frostPocketRisk : null)
+      );
+      sectHtml += makeSection("ds-soil", "sec-soil", "Soil &middot; " + (soil ? soil.source : "Unavailable"),
+        dr("Quality", soil ? soil.quality : null) +
+        dr("pH", soil ? soil.ph : null) +
+        dr("Organic carbon", soil && soil.organicCarbon ? soil.organicCarbon : null, "%") +
+        dr("Texture", soil ? soil.texture : null) +
+        dr("Clay", soil && soil.clay ? soil.clay : null, "%") +
+        dr("Sand", soil && soil.sand ? soil.sand : null, "%") +
+        dr("Sample points", soil ? soil.samplesCollected : null)
+      );
+      sectHtml += makeSection("ds-water", "sec-water", "Water &middot; USGS",
+        dr("Stream monitoring sites", water.nearestStream && water.nearestStream.count > 0 ? water.nearestStream.count + " within 7mi — " + water.nearestStream.name : "None found in region") +
+        dr("Groundwater monitoring sites", water.groundwater ? water.groundwater.count + " within 7mi — " + water.groundwater.nearestSiteName : "None found in region") +
+        dr("Note", "USGS monitoring stations — not on-property water features")
+      );
+      sectHtml += makeSection("ds-threats", "sec-threats", "Climate Threats",
+        dr("Flood zone", threats.flood ? threats.flood.interpretation : null) +
+        dr("Drought county", threats.drought ? threats.drought.county : null) +
+        dr("Drought — past year", threats.drought ? threats.drought.interpretation : null) +
+        dr("Abnormally dry", threats.drought && threats.drought.abnormallyDry ? threats.drought.abnormallyDry + "% of past year" : null) +
+        dr("Severe drought", threats.drought && threats.drought.severe ? threats.drought.severe + "% of past year" : null) +
+        dr("Wildfire risk", threats.wildfire ? threats.wildfire.interpretation : null)
+      );
+      sectHtml += '</div>';
+
+      var html = '<div class="results-grid">';
+      html += '<div>' + synHtml + mapHtml + '</div>';
+      html += '<div>' + sectHtml + '</div>';
+      html += '</div>';
+      html += '<div class="disclaimer-row"><p class="disclaimer">Analysis draws on publicly available climate, terrain, soil, hydrological, and hazard data. Coordinates are approximate. USGS water sites reflect regional monitoring stations, not on-property features. A physical site survey is recommended before any land decision.</p></div>';
+
+      document.getElementById("result").innerHTML = html;
+      setupLeaflet(parseFloat(coords.lat), parseFloat(coords.lon));
+      document.getElementById("pdf-btn").style.display = "";
+
+      lastResult = { coords: coords, nasa: nasa, terrain: terrain, soil: soil, water: water, threats: threats, synthesis: synthesis };
+    }
+
+    function exportPDF() {
+      if (!lastResult) return;
+      var doc = new window.jspdf.jsPDF();
+      var s = lastResult.synthesis;
+      var c = lastResult.coords;
+      var y = 20;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(18);
+      doc.text("Afterthought", 20, y);
+      doc.setFontSize(9);
+      doc.setTextColor(120, 100, 80);
+      doc.text("Off-grid viability analysis", 20, y + 7);
+      y += 18;
+
+      doc.setDrawColor(180, 160, 130);
+      doc.line(20, y, 190, y);
+      y += 8;
+
+      doc.setTextColor(40, 30, 20);
+      doc.setFontSize(10);
+      doc.text(c.name || "", 20, y);
+      y += 12;
+
+      if (s) {
+        doc.setFontSize(28);
+        doc.setTextColor(40, 30, 20);
+        doc.text(String(s.overall_score || "—") + " /100", 20, y);
+        y += 8;
+        doc.setFontSize(10);
+        doc.setTextColor(80, 60, 40);
+        var verdictLines = doc.splitTextToSize(s.overall_verdict || "", 170);
+        doc.text(verdictLines, 20, y);
+        y += verdictLines.length * 5 + 8;
+
+        doc.line(20, y, 190, y);
+        y += 8;
+
+        [
+          { key: "food", label: "Food Production" },
+          { key: "energy", label: "Energy" },
+          { key: "water", label: "Water Independence" },
+          { key: "climate", label: "Climate Resilience" }
+        ].forEach(function(cat) {
+          doc.setFontSize(9);
+          doc.setTextColor(120, 100, 80);
+          doc.text(cat.label.toUpperCase(), 20, y);
+          doc.setFontSize(14);
+          doc.setTextColor(40, 30, 20);
+          doc.text(String(s[cat.key + "_score"] || "—"), 20, y + 6);
+          doc.setFontSize(9);
+          doc.setTextColor(80, 60, 40);
+          var lines = doc.splitTextToSize(s[cat.key + "_summary"] || "", 165);
+          doc.text(lines, 20, y + 13);
+          y += 13 + lines.length * 4 + 6;
+        });
+
+        if (s.terrain_correction) {
+          doc.line(20, y, 190, y); y += 8;
+          doc.setFontSize(9);
+          doc.setTextColor(120, 100, 80);
+          doc.text("TERRAIN CORRECTION", 20, y); y += 5;
+          doc.setTextColor(80, 60, 40);
+          var tLines = doc.splitTextToSize(s.terrain_correction, 170);
+          doc.text(tLines, 20, y);
+          y += tLines.length * 4 + 8;
+        }
+
+        if (s.regulatory_flags && s.regulatory_flags.length > 0) {
+          doc.line(20, y, 190, y); y += 8;
+          doc.setFontSize(9);
+          doc.setTextColor(139, 58, 42);
+          doc.text("REGULATORY FLAGS", 20, y); y += 5;
+          doc.setTextColor(80, 40, 30);
+          s.regulatory_flags.forEach(function(flag) {
+            var fLines = doc.splitTextToSize("— " + flag, 170);
+            doc.text(fLines, 20, y);
+            y += fLines.length * 4 + 3;
+          });
+          y += 5;
+        }
+
+        doc.line(20, y, 190, y); y += 8;
+        doc.setFontSize(9);
+        doc.setTextColor(44, 74, 46);
+        doc.text("STRENGTHS", 20, y); y += 5;
+        doc.setTextColor(40, 30, 20);
+        (s.top_strengths || []).forEach(function(item) {
+          var lines = doc.splitTextToSize("+ " + item, 170);
+          doc.text(lines, 20, y);
+          y += lines.length * 4 + 2;
+        });
+        y += 6;
+        doc.setTextColor(139, 58, 42);
+        doc.text("RISKS", 20, y); y += 5;
+        doc.setTextColor(40, 30, 20);
+        (s.top_risks || []).forEach(function(item) {
+          var lines = doc.splitTextToSize("— " + item, 170);
+          doc.text(lines, 20, y);
+          y += lines.length * 4 + 2;
+        });
+      }
+
+      doc.setFontSize(7);
+      doc.setTextColor(150, 130, 100);
+      doc.text("Generated by Afterthought. Analysis draws on publicly available data. Not a substitute for professional site survey.", 20, 285);
+
+      var filename = "afterthought-" + (c.name || "analysis").replace(/[^a-z0-9]/gi, "-").toLowerCase().substring(0, 30) + ".pdf";
+      doc.save(filename);
+    }
+
+    async function getSynthesis(coords, nasa, terrain, soil, water, threats) {
+      var annualRainfall = (parseFloat(nasa.PRECTOTCORR.ANN) * 365).toFixed(0);
+
+      var urbanSignals = [];
+      var ruralSignals = [];
+      var name = (coords.name || "").toLowerCase();
+      if (/\broute\b|\bcounty road\b|\bcr \d|\btownship\b|\brd\b|\btwp\b/.test(name)) ruralSignals.push("rural road type");
+      if (/\b(city|town|village|street|ave|blvd|drive|lane)\b/.test(name)) urbanSignals.push("urban address pattern");
+      if (coords.method === "Regrid" && coords.acres) {
+        if (parseFloat(coords.acres) > 5) ruralSignals.push(coords.acres + " acres");
+        if (parseFloat(coords.acres) < 0.5) urbanSignals.push("small lot " + coords.acres + " acres");
+      }
+      var contextNote = ruralSignals.length > urbanSignals.length ? "Property signals: rural (" + ruralSignals.join(", ") + ")" :
+                        urbanSignals.length > 0 ? "Property signals: urban/suburban (" + urbanSignals.join(", ") + ")" :
+                        "Urban/rural character: unknown from available data";
+
+      var p = "You are an expert in off-grid homesteading, permaculture, land assessment, and sustainable agriculture. Analyze this specific property using ONLY the data provided. Return ONLY valid JSON — no markdown, no explanation, no code fences. Every sentence must reference actual numbers from the data. Do NOT use regional boilerplate. Be honest about data gaps.\n\n";
+      p += "PROPERTY: " + coords.name + "\n";
+      p += "COORDINATES: " + coords.lat + ", " + coords.lon + "\n";
+      p += contextNote + "\n";
+      if (coords.acres) p += "LAND AREA: " + coords.acres + " acres\n";
+      if (coords.zoning) p += "ZONING: " + coords.zoning + "\n\n";
+
+      p += "CLIMATE:\nSolar: " + nasa.ALLSKY_SFC_SW_DWN.ANN + " kWh/m2/day\nWind: " + nasa.WS10M.ANN + " m/s\nRainfall: " + annualRainfall + "mm/year\nTemp: " + nasa.T2M.ANN + "C\nFrost days: " + nasa.FROST_DAYS.ANN + "/year\nSoil moisture index: " + nasa.GWETROOT.ANN + "\n\n";
+      p += "TERRAIN:\nElevation: " + terrain.centerElevation + "m\nSlope: " + terrain.slopeDegrees + " degrees (" + terrain.slopePercent + "%)\nAspect: " + terrain.aspect + " (" + terrain.aspectDegrees + " degrees)\nElevation range: " + terrain.elevationRange + "m\nFrost pocket risk: " + terrain.frostPocketRisk + "\n\n";
+
+      if (soil) {
+        p += "SOIL (" + soil.source + "):\nQuality: " + soil.quality + "\npH: " + soil.ph + "\nTexture: " + soil.texture + "\nOrganic carbon: " + soil.organicCarbon + "%\n\n";
+      } else {
+        p += "SOIL: No data available — soil APIs currently unavailable. Do not speculate. Cap food score at 58 max and note absence.\n\n";
+      }
+
+      p += "WATER (USGS regional monitoring stations — NOT on-property features):\nStream monitoring sites within 7 miles: " + (water.nearestStream ? water.nearestStream.count : 0) + "\nGroundwater monitoring sites within 7 miles: " + (water.groundwater ? water.groundwater.count : 0) + "\nIMPORTANT: These are regional USGS monitoring sites, not streams or wells on this property. Do not treat them as on-property water access.\n\n";
+
+      p += "THREATS:\nDrought: " + (threats.drought ? threats.drought.interpretation : "No data") + "\nWildfire: " + (threats.wildfire ? threats.wildfire.interpretation : "No data") + "\nFlood: FEMA data pending integration\n\n";
+
+      p += "STRICT SCORING RULES — follow exactly:\n";
+      p += "- Urban/suburban signals present → food score MAX 35, overall MAX 55\n";
+      p += "- No acreage data AND urban signals → food score MAX 30\n";
+      p += "- Solar >= 15 kWh/m2/day → energy 75-85. Solar 13-15 → energy 60-74. Solar < 13 → energy max 55\n";
+      p += "- Frost days >= 150 → food score penalty: subtract 15 points\n";
+      p += "- No soil data → food score MAX 58, note uncertainty in summary\n";
+      p += "- USGS monitoring sites are NOT on-property water → do not boost water score for them\n";
+      p += "- Drought > 25% severe exposure → climate score MAX 60\n";
+      p += "- Rural signals + large acreage + good soil → may score food 65-80\n\n";
+
+      p += "REGULATORY FLAGS to assess and include (1-3 sentences each, only if relevant):\n";
+      p += "- Is off-grid/rural residential likely permitted based on location?\n";
+      p += "- Are there likely water rights issues? (some western states restrict rainwater harvesting)\n";
+      p += "- Are there likely agricultural zoning considerations?\n";
+      p += "Include only genuinely relevant flags, not generic warnings.\n\n";
+
+      p += 'Return ONLY this JSON:\n{"overall_score":65,"overall_verdict":"Two specific sentences using actual data numbers from above.","food_score":55,"food_summary":"Two sentences referencing actual frost days and whether soil data was available.","energy_score":70,"energy_summary":"Two sentences referencing actual solar irradiance number.","water_score":50,"water_summary":"Two sentences — be honest that USGS data shows regional monitoring sites, not on-property water.","climate_score":75,"climate_summary":"Two sentences referencing actual drought and wildfire data.","terrain_correction":"One sentence on how this specific aspect and slope affect growing conditions and solar access.","regulatory_flags":["relevant flag if any","another flag if relevant"],"top_strengths":["strength referencing actual data","strength referencing actual data","strength referencing actual data"],"top_risks":["risk referencing actual data","risk referencing actual data","risk referencing actual data"]}';
+
+      var response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1400,
+          messages: [{ role: "user", content: p }]
+        })
+      });
+
+      var rt = await response.text();
+      if (!response.ok) throw new Error("API " + response.status + ": " + rt.substring(0, 150));
+      var data = JSON.parse(rt);
+      if (data.error) throw new Error(data.error.message);
+      var text = data.content.map(function(b) { return b.text || ""; }).join("");
+      var clean = text.replace(/```json|```/g, "").trim();
+      var s = clean.indexOf("{"), e = clean.lastIndexOf("}");
+      if (s !== -1 && e !== -1) clean = clean.substring(s, e + 1);
+      return JSON.parse(clean);
+    }
+
+    async function getClimateThreats(lat, lon) {
+      var threats = { flood: null, drought: null, wildfire: null };
+      var countyFips = null, countyName = null;
+      try {
+        var fccR = await fetch("https://geo.fcc.gov/api/census/block/find?latitude=" + lat + "&longitude=" + lon + "&format=json");
+        var fccD = await fccR.json();
+        if (fccD.County && fccD.County.FIPS) { countyFips = fccD.County.FIPS; countyName = fccD.County.name; }
+      } catch(e) {}
+      if (countyFips) {
+        try {
+          var today = new Date(), endDate = today.toISOString().split("T")[0];
+          var past = new Date(); past.setFullYear(past.getFullYear() - 1);
+          var dR = await fetch("https://usdmdataservices.unl.edu/api/CountyStatistics/GetDroughtSeverityStatisticsByArea?aoi=" + countyFips + "&startdate=" + past.toISOString().split("T")[0] + "&enddate=" + endDate + "&statisticsType=1");
+          var dD = await dR.json();
+          if (dD && dD.length > 0) {
+            var latest = dD[dD.length - 1];
+            var severe = (parseFloat(latest.D2)||0) + (parseFloat(latest.D3)||0) + (parseFloat(latest.D4)||0);
+            threats.drought = { county: countyName, severe: severe.toFixed(0), abnormallyDry: (parseFloat(latest.D0)||0).toFixed(0), interpretation: interpretDrought(latest, severe) };
+          }
+        } catch(e) {}
+      }
+      threats.flood = { interpretation: "FEMA data — bridge required" };
+      try {
+        var fR = await fetch("https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_FireHazardSeverityZones/MapServer/0/query?geometry=" + lon + "," + lat + "&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=HAZ_CLASS,HSZCLASS&f=json&inSR=4326");
+        var fD = await fR.json();
+        if (fD.features && fD.features.length > 0) {
+          threats.wildfire = { interpretation: interpretFireHazard(fD.features[0].attributes.HAZ_CLASS || fD.features[0].attributes.HSZCLASS) };
+        } else {
+          threats.wildfire = { interpretation: "Not in a mapped fire hazard severity zone" };
+        }
+      } catch(e) { threats.wildfire = { interpretation: "Wildfire data unavailable" }; }
+      return threats;
+    }
+
+    function interpretDrought(data, severe) {
+      if (!data) return "No data";
+      if (severe > 50) return "Very high — " + severe.toFixed(0) + "% of past year in severe drought or worse";
+      if (severe > 25) return "High — " + severe.toFixed(0) + "% of past year in severe drought";
+      var moderate = (parseFloat(data.D1)||0) + severe;
+      if (moderate > 25) return "Moderate — " + moderate.toFixed(0) + "% of past year affected";
+      return "Low — " + parseFloat(data.None||0).toFixed(0) + "% of past year drought-free";
+    }
+
+    function interpretFireHazard(cls) {
+      if (!cls) return "No classification";
+      var c = cls.toString().toLowerCase();
+      if (c.includes("very high") || c === "3") return "Very high fire hazard severity";
+      if (c.includes("high") || c === "2") return "High fire hazard severity";
+      if (c.includes("moderate") || c === "1") return "Moderate fire hazard severity";
+      return "Classification: " + cls;
+    }
+
+    async function getNASAData(lat, lon) {
+      var r = await fetch("https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=ALLSKY_SFC_SW_DWN,WS10M,PRECTOTCORR,T2M,FROST_DAYS,GWETROOT&community=AG&longitude=" + lon + "&latitude=" + lat + "&format=JSON");
+      var d = await r.json();
+      return d.properties.parameter;
+    }
+
+    async function getElevationData(lat, lon) {
+      var offset = 0.002;
+      var pts = [
+        [parseFloat(lat)-offset, parseFloat(lon)],
+        [parseFloat(lat), parseFloat(lon)-offset],
+        [parseFloat(lat), parseFloat(lon)],
+        [parseFloat(lat), parseFloat(lon)+offset],
+        [parseFloat(lat)+offset, parseFloat(lon)],
+      ];
+      var elevations = [];
+      for (var i = 0; i < pts.length; i++) {
+        try {
+          var pt = pts[i];
+          var ctrl = new AbortController();
+          var t = setTimeout(function() { ctrl.abort(); }, 4000);
+          var r = await fetch("https://epqs.nationalmap.gov/v1/json?x=" + pt[1] + "&y=" + pt[0] + "&wkid=4326&includeDate=false", { signal: ctrl.signal });
+          clearTimeout(t);
+          var d = await r.json();
+          var elev = d.value;
+          elevations.push((elev !== null && elev !== undefined && elev !== -1000000) ? parseFloat(elev) : null);
+        } catch(e) { elevations.push(null); }
+      }
+      var valid = elevations.filter(function(e) { return e !== null; });
+      if (valid.length === 0) return { centerElevation:"Unavailable", slopeDegrees:"Unavailable", slopePercent:"Unavailable", aspect:"Unavailable", aspectDegrees:"Unavailable", elevationRange:"Unavailable", frostPocketRisk:"Unavailable" };
+      var center = elevations[2] !== null ? elevations[2] : valid[0];
+      var north = elevations[0] !== null ? elevations[0] : center;
+      var south = elevations[4] !== null ? elevations[4] : center;
+      var east  = elevations[3] !== null ? elevations[3] : center;
+      var west  = elevations[1] !== null ? elevations[1] : center;
+      var rise = Math.sqrt(Math.pow(east-west,2)+Math.pow(north-south,2));
+      var run = 2*offset*111000;
+      var slopePercent = (rise/run)*100;
+      var slopeDegrees = Math.atan(slopePercent/100)*(180/Math.PI);
+      var aspectRad = Math.atan2(north-south,east-west);
+      var aspectDeg = (aspectRad*180/Math.PI+360)%360;
+      var elevRange = Math.max.apply(null,valid)-Math.min.apply(null,valid);
+      return {
+        centerElevation: center.toFixed(0), slopeDegrees: slopeDegrees.toFixed(1),
+        slopePercent: slopePercent.toFixed(1), aspect: getAspectName(aspectDeg),
+        aspectDegrees: aspectDeg.toFixed(0), elevationRange: elevRange.toFixed(1),
+        frostPocketRisk: elevRange > 10 ? "Elevated" : "Low"
+      };
+    }
+
+    function getAspectName(d) {
+      if (d>=337.5||d<22.5) return "North"; if (d<67.5) return "Northeast";
+      if (d<112.5) return "East"; if (d<157.5) return "Southeast";
+      if (d<202.5) return "South"; if (d<247.5) return "Southwest";
+      if (d<292.5) return "West"; return "Northwest";
+    }
+
+    async function tryPolaris(lat, lon) {
+      try {
+        var props=["ph","soc","clay","sand","bd"], result={};
+        for(var i=0;i<props.length;i++){
+          var r=await fetch("https://casoilresource.lawr.ucdavis.edu/api/soil-series/?q=point&lon="+lon+"&lat="+lat+"&prop="+props[i]);
+          if(!r.ok)continue;
+          var d=await r.json();
+          if(d&&d[props[i]]!==undefined)result[props[i]]=d[props[i]];
+        }
+        return Object.keys(result).length>0?result:null;
+      } catch(e){}
+      return null;
+    }
+
+    async function trySoilGrids(lat, lon) {
+      try {
+        var props=["phh2o","soc","clay","sand","bdod","cec"];
+        var ctrl=new AbortController(), t=setTimeout(function(){ctrl.abort();},8000);
+        var url = "https://rest.isric.org/soilgrids/v2.0/properties/query?lon="+lon+"&lat="+lat;
+        props.forEach(function(p){ url += "&property=" + p; });
+        url += "&depth=0-5cm&value=mean";
+        var r=await fetch(url,{signal:ctrl.signal});
+        clearTimeout(t);
+        if(!r.ok)return null;
+        var d=await r.json(), result={};
+        if(!d.properties||!d.properties.layers||d.properties.layers.length===0)return null;
+        d.properties.layers.forEach(function(l){
+          if(l.depths&&l.depths[0]&&l.depths[0].values&&l.depths[0].values.mean!==null&&l.depths[0].values.mean!==undefined)
+            result[l.name]=l.depths[0].values.mean;
+        });
+        return Object.keys(result).length>0?result:null;
+      } catch(e){}
+      return null;
+    }
+
+    async function tryOpenLandMap(lat, lon) {
+      try {
+        var r=await fetch("https://api.openlandmap.org/query/point?lon="+lon+"&lat="+lat+"&coll=predicted250m&regex=sol_ph.h2o_usda.4c1a2a_m_250m|sol_organic.carbon_usda.6a1c_m_250m|sol_clay.wfraction_usda.3a1_m_250m|sol_sand.wfraction_usda.3a1_m_250m");
+        if(!r.ok)return null;
+        var d=await r.json();
+        if(!d.response||d.response.length===0)return null;
+        var result={};
+        d.response.forEach(function(item){
+          if(item.variable.includes("ph.h2o"))result.phh2o=item.val*10;
+          if(item.variable.includes("organic.carbon"))result.soc=item.val*10;
+          if(item.variable.includes("clay"))result.clay=item.val*10;
+          if(item.variable.includes("sand"))result.sand=item.val*10;
+        });
+        return Object.keys(result).length>0?result:null;
+      } catch(e){}
+      return null;
+    }
+
+    function interpretSoil(avg, source) {
+      var ph=avg.phh2o?(avg.phh2o/10).toFixed(1):avg.ph?parseFloat(avg.ph).toFixed(1):null;
+      var soc=avg.soc?(avg.soc/10).toFixed(1):null;
+      var clay=avg.clay?(avg.clay/10).toFixed(1):null;
+      var sand=avg.sand?(avg.sand/10).toFixed(1):null;
+      var cec=avg.cec?(avg.cec/10).toFixed(1):null;
+      var quality="Unknown";
+      if(ph&&soc&&clay){
+        var ps=(parseFloat(ph)>=6&&parseFloat(ph)<=7.5)?2:(parseFloat(ph)>=5.5&&parseFloat(ph)<=8)?1:0;
+        var ss=parseFloat(soc)>2?2:parseFloat(soc)>1?1:0;
+        var ts=(parseFloat(clay)>10&&parseFloat(clay)<40&&(!sand||parseFloat(sand)<70))?2:1;
+        quality=(ps+ss+ts)>=5?"High":(ps+ss+ts)>=3?"Moderate":"Low";
+      }
+      var texture="Unknown";
+      if(clay&&sand){
+        var silt=100-parseFloat(clay)-parseFloat(sand);
+        if(parseFloat(clay)>40)texture="Clay";
+        else if(parseFloat(sand)>70)texture="Sandy";
+        else if(silt>50)texture="Silty";
+        else texture="Loam";
+      }
+      return{ph,organicCarbon:soc,clay,sand,cec,quality,texture,source};
+    }
+
+    async function getSoilData(lat, lon) {
+      var offset=0.002;
+      var pts=[
+        {lat:parseFloat(lat),lon:parseFloat(lon)},
+        {lat:parseFloat(lat)+offset,lon:parseFloat(lon)+offset},
+        {lat:parseFloat(lat)+offset,lon:parseFloat(lon)-offset},
+        {lat:parseFloat(lat)-offset,lon:parseFloat(lon)+offset},
+        {lat:parseFloat(lat)-offset,lon:parseFloat(lon)-offset},
+      ];
+      var all=[],source="Unavailable";
+      for(var i=0;i<pts.length;i++){var r=await tryPolaris(pts[i].lat,pts[i].lon);if(r)all.push(r);}
+      if(all.length>0)source="Polaris (30m)";
+      if(all.length===0){for(var i=0;i<pts.length;i++){var r=await trySoilGrids(pts[i].lat,pts[i].lon);if(r)all.push(r);}if(all.length>0)source="SoilGrids (250m)";}
+      if(all.length===0){for(var i=0;i<pts.length;i++){var r=await tryOpenLandMap(pts[i].lat,pts[i].lon);if(r)all.push(r);}if(all.length>0)source="OpenLandMap (250m)";}
+      if(all.length===0)return null;
+      var keys=Object.keys(all[0]),avg={};
+      keys.forEach(function(k){
+        var vals=all.map(function(r){return r[k];}).filter(function(v){return v!==null&&v!==undefined;});
+        avg[k]=vals.length>0?vals.reduce(function(a,b){return a+b;},0)/vals.length:null;
+      });
+      var out=interpretSoil(avg,source);
+      out.samplesCollected=all.length;
+      return out;
+    }
+
+    async function getWaterData(lat, lon) {
+      var results={groundwater:null,nearestStream:null};
+      try{
+        var latN=parseFloat(lat),lonN=parseFloat(lon),off=0.1;
+        var bBox=(lonN-off).toFixed(4)+","+(latN-off).toFixed(4)+","+(lonN+off).toFixed(4)+","+(latN+off).toFixed(4);
+        var r=await fetch("https://waterservices.usgs.gov/nwis/site/?format=rdb&siteType=GW,ST&siteStatus=active&hasDataTypeCd=dv&bBox="+bBox);
+        var text=await r.text();
+        var lines=text.split("\n").filter(function(l){return l.length>0&&!l.startsWith("#");});
+        if(lines.length>=2){
+          var hdrs=lines[0].split("\t");
+          var nmIdx=hdrs.indexOf("station_nm"),tpIdx=hdrs.indexOf("site_tp_cd");
+          var streams=[],gw=[];
+          for(var i=2;i<lines.length;i++){
+            var cols=lines[i].split("\t");
+            if(cols.length<tpIdx+1)continue;
+            var tp=cols[tpIdx]?cols[tpIdx].trim():"";
+            var nm=cols[nmIdx]?cols[nmIdx].trim():"Unknown";
+            if(tp==="ST")streams.push(nm);
+            if(tp==="GW")gw.push(nm);
+          }
+          if(streams.length>0)results.nearestStream={name:streams[0],count:streams.length};
+          if(gw.length>0)results.groundwater={nearestSiteName:gw[0],count:gw.length};
+        }
+      }catch(e){}
+      return results;
+    }
+
+    function extractStateFromAddress(address) {
+      var m = address.match(/,\s*([A-Z]{2})(\s+\d{5})?(\s*,|\s*$)/);
+      if (m) return m[1].toLowerCase();
+      return null;
+    }
+
+    function extractCountyFromFCC(fccData) {
+      if (!fccData || !fccData.County) return null;
+      return fccData.County.name.toLowerCase().replace(" county","").replace(/\s+/g,"-");
+    }
+
+    async function geocode(address) {
+      var state = extractStateFromAddress(address);
+      var rg = await tryRegrid(address, state);
+      if (rg) return rg;
+
+      var parts = address.split(",").map(function(p){return p.trim();});
+      var zipMatch = address.match(/\b\d{5}\b/);
+      var zip = zipMatch ? zipMatch[0] : null;
+      var cityState = null;
+      for(var i=0;i<parts.length;i++){
+        if(parts[i].match(/^[A-Z]{2}(\s+\d{5})?$/)){
+          cityState=parts[i-1]+", "+parts[i].replace(/\s+\d{5}/,"").trim();
+          break;
+        }
+      }
+
+      var cA=[address];if(cityState)cA.push(cityState);if(zip)cA.push(zip);
+      for(var i=0;i<cA.length;i++){var r=await tryCensus(cA[i]);if(r){r.method="Census";return r;}}
+
+      var nA=[address];if(cityState)nA.push(cityState);if(zip)nA.push(zip);
+      for(var i=0;i<nA.length;i++){var r=await tryNominatim(nA[i]);if(r){r.method="Nominatim";return r;}}
+      return null;
+    }
+
+    async function tryRegrid(address, state) {
+      try{
+        var url = "https://app.regrid.com/api/v2/parcels/address?query="+encodeURIComponent(address)+"&limit=1&return_matched_buildings=true&return_custom=true";
+        if (state) url += "&context=/us/" + state;
+        var r=await fetch(url,{headers:{"Authorization":"Bearer "+REGRID_API_KEY,"Accept":"application/json","Content-Type":"application/json"}});
+        var d=await r.json();
+        if(d.parcels&&d.parcels.features&&d.parcels.features.length>0){
+          var f=d.parcels.features[0].properties.fields;
+          return{lat:f.lat,lon:f.lon,name:f.address||address,acres:f.ll_gisacre,zoning:f.zoning,parcel_id:f.parcelnumb,method:"Regrid"};
+        }
+      }catch(e){}
+      return null;
+    }
+
+    async function tryCensus(address) {
+      try{
+        var r=await fetch("https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address="+encodeURIComponent(address)+"&benchmark=2020&format=json");
+        var d=await r.json();
+        if(d.result.addressMatches.length>0){var m=d.result.addressMatches[0];return{lat:m.coordinates.y,lon:m.coordinates.x,name:m.matchedAddress};}
+      }catch(e){}
+      return null;
+    }
+
+    async function tryNominatim(address) {
+      try{
+        var r=await fetch("https://nominatim.openstreetmap.org/search?q="+encodeURIComponent(address)+"&format=json&limit=1&countrycodes=us",{headers:{"Accept":"application/json","User-Agent":"Afterthought/1.0"}});
+        var d=await r.json();
+        if(d.length>0)return{lat:d[0].lat,lon:d[0].lon,name:d[0].display_name};
+      }catch(e){}
+      return null;
+    }
+  </script>
+</body>
+</html>
