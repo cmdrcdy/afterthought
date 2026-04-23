@@ -163,8 +163,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    var REGRID_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJyZWdyaWQuY29tIiwiaWF0IjoxNzc0NzY4MTU4LCJleHAiOjE3NzczNjAxNTgsInUiOjczNzQ5OSwiZyI6MjMxNTMsImNhcCI6InBhOnRzOnBzOmJmOm1hOnR5OmVvOnpvOnNiIn0.noU6EGGpiEnehRDAP49roYZLbee33f4IS1QbTEMFMFA";
-    var ANTHROPIC_API_KEY = var ANTHROPIC_API_KEY = "PUT-YOUR-ANTHROPIC-KEY-HERE";
+
     var leafletMap = null;
     var lastResult = null;
 
@@ -585,19 +584,10 @@
 
       p += 'Return ONLY this JSON:\n{"overall_score":65,"overall_verdict":"Two specific sentences using actual data numbers from above.","food_score":55,"food_summary":"Two sentences referencing actual frost days and whether soil data was available.","energy_score":70,"energy_summary":"Two sentences referencing actual solar irradiance number.","water_score":50,"water_summary":"Two sentences — be honest that USGS data shows regional monitoring sites, not on-property water.","climate_score":75,"climate_summary":"Two sentences referencing actual drought and wildfire data.","terrain_correction":"One sentence on how this specific aspect and slope affect growing conditions and solar access.","regulatory_flags":["relevant flag if any","another flag if relevant"],"top_strengths":["strength referencing actual data","strength referencing actual data","strength referencing actual data"],"top_risks":["risk referencing actual data","risk referencing actual data","risk referencing actual data"]}';
 
-      var response = await fetch("https://api.anthropic.com/v1/messages", {
+var response = await fetch("/.netlify/functions/anthropic", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1400,
-          messages: [{ role: "user", content: p }]
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1400, messages: [{ role: "user", content: p }] })
       });
 
       var rt = await response.text();
