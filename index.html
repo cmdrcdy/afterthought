@@ -613,7 +613,7 @@ var response = await fetch("/.netlify/functions/anthropic", {
         try {
           var today = new Date(), endDate = today.toISOString().split("T")[0];
           var past = new Date(); past.setFullYear(past.getFullYear() - 1);
-          var dR = await fetch("https://usdmdataservices.unl.edu/api/CountyStatistics/GetDroughtSeverityStatisticsByArea?aoi=" + countyFips + "&startdate=" + past.toISOString().split("T")[0] + "&enddate=" + endDate + "&statisticsType=1");
+          var dR = await fetch("/.netlify/functions/proxy?target=drought&aoi=" + countyFips + "&startdate=" + past.toISOString().split("T")[0] + "&enddate=" + endDate + "&statisticsType=1");
           var dD = await dR.json();
           if (dD && dD.length > 0) {
             var latest = dD[dD.length - 1];
@@ -714,7 +714,7 @@ var response = await fetch("/.netlify/functions/anthropic", {
       try {
         var props=["ph","soc","clay","sand","bd"], result={};
         for(var i=0;i<props.length;i++){
-          var r=await fetch("https://casoilresource.lawr.ucdavis.edu/api/soil-series/?q=point&lon="+lon+"&lat="+lat+"&prop="+props[i]);
+          var r=await fetch("/.netlify/functions/proxy?target=polaris&q=point&lon="+lon+"&lat="+lat+"&prop="+props[i]);
           if(!r.ok)continue;
           var d=await r.json();
           if(d&&d[props[i]]!==undefined)result[props[i]]=d[props[i]];
@@ -890,7 +890,7 @@ var response = await fetch("/.netlify/functions/anthropic", {
 
     async function tryCensus(address) {
       try{
-        var r=await fetch("https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address="+encodeURIComponent(address)+"&benchmark=2020&format=json");
+        var r=await fetch("/.netlify/functions/proxy?target=census&address="+encodeURIComponent(address));
         var d=await r.json();
         if(d.result.addressMatches.length>0){var m=d.result.addressMatches[0];return{lat:m.coordinates.y,lon:m.coordinates.x,name:m.matchedAddress};}
       }catch(e){}
